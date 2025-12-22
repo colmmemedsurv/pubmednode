@@ -1,16 +1,12 @@
-import feedparser
 import os
 import openai
+import feedparser
+import requests
 from lxml import etree
 from datetime import datetime
 
 # --------------------------------------------------
-# REQUIRED FOR PUBMED (DO NOT REMOVE)
-# --------------------------------------------------
-feedparser.USER_AGENT = "pubmednode/1.0 (contact: colmme.medsurv@gmail.com)"
-
-# --------------------------------------------------
-# CONFIGURATION
+# CONFIG
 # --------------------------------------------------
 RSS_FEED_URL = (
     "https://pubmed.ncbi.nlm.nih.gov/rss/search/"
@@ -22,6 +18,20 @@ OUTPUT_ACCEPTED = "output/filtered_feed.xml"
 OUTPUT_REJECTED = "output/rejected_feed.xml"
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+
+# --------------------------------------------------
+# FETCH RSS WITH HEADERS (REQUIRED FOR PUBMED)
+# --------------------------------------------------
+def fetch_pubmed_rss(url: str) -> feedparser.FeedParserDict:
+    headers = {
+        "User-Agent": "pubmednode/1.0 (contact: your-email@example.com)",
+        "Accept": "application/rss+xml, application/xml",
+    }
+
+    response = requests.get(url, headers=headers, timeout=30)
+    response.raise_for_status()
+
+    return feedparser.parse(response.text)
 
 # --------------------------------------------------
 # OPENAI CLASSIFICATION
@@ -73,12 +83,11 @@ def add_item(channel, entry):
 # MAIN
 # --------------------------------------------------
 def main():
-    feed = feedparser.parse(RSS_FEED_URL)
+    feed = fetch_pubmed_rss(RSS_FEED_URL)
 
     if not feed.entries:
         raise RuntimeError(
-            "PubMed RSS returned zero entries. "
-            "Check User-Agent and feed URL."
+            "PubMed RSS returned zero entries even after headered fetch."
         )
 
     accepted_rss, accepted_channel = create_channel(
