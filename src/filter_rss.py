@@ -6,7 +6,7 @@ from lxml import etree
 from datetime import datetime
 
 # --------------------------------------------------
-# CONFIG
+# CONFIGURATION
 # --------------------------------------------------
 RSS_FEED_URL = (
     "https://pubmed.ncbi.nlm.nih.gov/rss/search/"
@@ -20,11 +20,11 @@ OUTPUT_REJECTED = "output/rejected_feed.xml"
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # --------------------------------------------------
-# FETCH RSS WITH HEADERS (REQUIRED FOR PUBMED)
+# FETCH PUBMED RSS WITH HEADERS
 # --------------------------------------------------
 def fetch_pubmed_rss(url: str) -> feedparser.FeedParserDict:
     headers = {
-        "User-Agent": "pubmednode/1.0 (contact: your-email@example.com)",
+        "User-Agent": "pubmednode/1.0 (contact: colmme.medsurv@gmail.com)",
         "Accept": "application/rss+xml, application/xml",
     }
 
@@ -34,7 +34,7 @@ def fetch_pubmed_rss(url: str) -> feedparser.FeedParserDict:
     return feedparser.parse(response.text)
 
 # --------------------------------------------------
-# OPENAI CLASSIFICATION
+# OPENAI CLASSIFICATION (USER-SUPPLIED QUERY)
 # --------------------------------------------------
 def is_head_and_neck_cancer(text: str) -> bool:
     prompt = f"""
@@ -42,8 +42,9 @@ You are a biomedical expert.
 Answer ONLY "YES" or "NO".
 
 Is the following paper related to head and neck cancer
-(including oral, laryngeal, tonsil, oropharynx, pharyngeal, larynx, hypopharynx, nasopharynx, nasal, thyroid, head and neck skin SCC, salivary gland cancers, rare head and neck cancer)?
-
+(including oral, laryngeal, tonsil, oropharynx, pharyngeal, larynx,
+hypopharynx, nasopharynx, nasal, thyroid, head and neck skin SCC,
+salivary gland cancers, rare head and neck cancer)?
 
 Paper:
 {text}
@@ -87,7 +88,8 @@ def main():
 
     if not feed.entries:
         raise RuntimeError(
-            "PubMed RSS returned zero entries even after headered fetch."
+            "PubMed RSS returned zero entries. "
+            "Check User-Agent and feed URL."
         )
 
     accepted_rss, accepted_channel = create_channel(
