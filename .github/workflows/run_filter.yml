@@ -26,10 +26,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python src/filter_rss.py
 
-      - name: Commit updated RSS
+      - name: Commit updated RSS files
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add output/filtered_feed.xml
-          git commit -m "Update filtered PubMed RSS" || echo "No changes"
+          git add output/filtered_feed.xml output/rejected_feed.xml
+          git commit -m "Update accepted and rejected PubMed RSS feeds" || echo "No changes"
           git push
+
