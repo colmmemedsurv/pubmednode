@@ -4,13 +4,28 @@ import openai
 from lxml import etree
 from datetime import datetime
 
-RSS_FEED_URL = "https://pubmed.ncbi.nlm.nih.gov/rss/search/1FKYAX__W2XmZZnH7wCJZ2gjg5p61zj0lAum4ErUZK11BzSsdZ/?limit=100"
+# --------------------------------------------------
+# REQUIRED FOR PUBMED (DO NOT REMOVE)
+# --------------------------------------------------
+feedparser.USER_AGENT = "pubmednode/1.0 (contact: colmme.medsurv@gmail.com)"
+
+# --------------------------------------------------
+# CONFIGURATION
+# --------------------------------------------------
+RSS_FEED_URL = (
+    "https://pubmed.ncbi.nlm.nih.gov/rss/search/"
+    "1FKYAX__W2XmZZnH7wCJZ2gjg5p61zj0lAum4ErUZK11BzSsdZ/"
+    "?limit=100"
+)
 
 OUTPUT_ACCEPTED = "output/filtered_feed.xml"
 OUTPUT_REJECTED = "output/rejected_feed.xml"
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+# --------------------------------------------------
+# OPENAI CLASSIFICATION
+# --------------------------------------------------
 def is_head_and_neck_cancer(text: str) -> bool:
     prompt = f"""
 You are a biomedical expert.
@@ -18,6 +33,7 @@ Answer ONLY "YES" or "NO".
 
 Is the following paper related to head and neck cancer
 (including oral, laryngeal, tonsil, oropharynx, pharyngeal, larynx, hypopharynx, nasopharynx, nasal, thyroid, head and neck skin SCC, salivary gland cancers, rare head and neck cancer)?
+
 
 Paper:
 {text}
@@ -31,13 +47,18 @@ Paper:
 
     return response.choices[0].message["content"].strip().upper() == "YES"
 
+# --------------------------------------------------
+# RSS HELPERS
+# --------------------------------------------------
 def create_channel(title: str, link: str, description: str):
     rss = etree.Element("rss", version="2.0")
     channel = etree.SubElement(rss, "channel")
+
     etree.SubElement(channel, "title").text = title
     etree.SubElement(channel, "link").text = link
     etree.SubElement(channel, "description").text = description
     etree.SubElement(channel, "lastBuildDate").text = datetime.utcnow().isoformat()
+
     return rss, channel
 
 def add_item(channel, entry):
@@ -48,8 +69,17 @@ def add_item(channel, entry):
     etree.SubElement(item, "description").text = entry.get("summary", "")
     etree.SubElement(item, "pubDate").text = entry.get("published", "")
 
+# --------------------------------------------------
+# MAIN
+# --------------------------------------------------
 def main():
     feed = feedparser.parse(RSS_FEED_URL)
+
+    if not feed.entries:
+        raise RuntimeError(
+            "PubMed RSS returned zero entries. "
+            "Check User-Agent and feed URL."
+        )
 
     accepted_rss, accepted_channel = create_channel(
         "Filtered PubMed – Head and Neck Cancer",
@@ -98,5 +128,6 @@ def main():
     print(f"Accepted papers: {accepted_count}")
     print(f"Rejected papers: {rejected_count}")
 
+# --------------------------------------------------
 if __name__ == "__main__":
     main()
